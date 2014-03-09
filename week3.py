@@ -4,6 +4,7 @@ Problem Set, week 3
 import os
 from Crypto import Random
 from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
 from utils import strxor
 
 
@@ -67,10 +68,38 @@ def DoTwo():
     print "y2: %s" % y2.encode("hex")
     print "f2: %s" % f2.encode("hex")
 
+def split_video(video_path, chunk_size=1024):
+    """
+    """
+    result = []
+    with open(video_path, "rb") as f:
+        piece = f.read(chunk_size)
+        while piece:
+            result.append(piece)
+            piece = f.read(chunk_size)
+    return result
+
+def get_h0(video_file):
+    """
+    """
+    video_shunks = split_video(video_file)
+    hash = SHA256.new(video_shunks[-1])
+    h = hash.digest()
+    for i in reversed(range(len(video_shunks)-1)):
+        block = video_shunks[i]
+        hash = SHA256.new(block)
+        hash.update(h)
+        h = hash.digest()
+    return h.encode('hex')
+
 def main():
     DoOne()
     print 80*'-'
     DoTwo()
+    print 80*'-'
+    thevideo = "../6 - 1 - Introduction (11 min).mp4"
+    sample_video = "../6 - 2 - Generic birthday attack (16 min).mp4"
+    print "h0:", get_h0(thevideo)
 
 if __name__ == '__main__':
     main()
