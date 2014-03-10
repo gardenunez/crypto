@@ -1,4 +1,4 @@
 crypto
 ======
 
-Programming solutions for problems of the Cryptography I Coursera Course.
+Programming assignment solutions of Cryptography I Coursera Course.
