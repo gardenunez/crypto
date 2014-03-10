@@ -1,36 +1,51 @@
-from utils import strxor
-import urllib2
-import sys
+#!/usr/bin/env python
+import logging as log
+import re
+import argparse 
 
-def Question1():
-    old_cipher = "20814804c1767293b99f1d9cab3bc3e7 ac1e37bfb15599e5f40eef805488281d "
-    old = "Pay Bob 100$    "
-    new = "Pay Bob 500$    "
-    iv =  old_cipher[:16]
-    new_iv = strxor(strxor(iv, old), new)
-    new_cipher = "%s%s"%(new_iv, old_cipher[16:])
-    print new_cipher
+if __debug__:
+    log.basicConfig(level=log.DEBUG)
+else:
+    log.basicConfig()
+
+def strxor(a, b):
+    """xor two strings of same lengths"""
+    return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a, b)])
+
+def main(filename):
+    ciphertext = ''
+    oracles = []
+    plaintexts = []
+
+    # Very dumb access log parsing
+    payload = re.compile(r'.* "GET /([0-9a-z]+) .*"')
+
+    with open(filename) as lines:
+        for line in lines:
+            try:
+                line = line.strip()
+                if line.endswith(' 200'):
+                    ciphertext, = payload.findall(line)
+                elif line.endswith(' 404') and '/20' not in line:
+                    oracles.append(payload.findall(line)[0])
+            except Exception as e:
+                log.debug("Line processing failed: %(line)s", dict(line=line), exc_info=True)
+
+    log.info("ciphertext: %(ciphertext)s", dict(ciphertext=ciphertext))
+    log.info("oracles: %(oracles)s", dict(oracles=oracles))
+
+    # XXX: UGLY!!
+    padding = ('10' * 16).decode('hex')
+    for i in range(1, len(oracles)):
+        xorred_guess = oracles[i][:32].decode('hex')
+        ciphertext = oracles[i - 1][32:].decode('hex')
+        plaintexts.append(strxor(strxor(ciphertext, padding), xorred_guess))
+
+    log.warning("plaintext: %(plaintext)s", dict(plaintext="".join(plaintexts)))
 
 
-TARGET = 'http://crypto-class.appspot.com/po?er='
-#--------------------------------------------------------------
-# padding oracle
-#--------------------------------------------------------------
-class PaddingOracle(object):
-    def query(self, q):
-        target = TARGET + urllib2.quote(q)    # Create query URL
-        req = urllib2.Request(target)         # Send HTTP request to server
-        try:
-            f = urllib2.urlopen(req)          # Wait for response
-        except urllib2.HTTPError, e:          
-            print "We got: %d" % e.code       # Print response code
-            if e.code == 404:
-                return True # good padding
-            return False # bad padding
-
-if __name__ == "__main__":
-    po = PaddingOracle()
-    po.query(sys.argv[1])       # Issue HTTP query with the given argument
-
-def main():
-    pass
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", dest="file", default="week4.log")
+    args = parser.parse_args()
+    main(args.file)
