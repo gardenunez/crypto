@@ -34,13 +34,13 @@ def main(filename):
     log.info("ciphertext: %(ciphertext)s", dict(ciphertext=ciphertext))
     log.info("oracles: %(oracles)s", dict(oracles=oracles))
 
-    # XXX: UGLY!!
     padding = ('10' * 16).decode('hex')
     for i in range(1, len(oracles)):
         xorred_guess = oracles[i][:32].decode('hex')
         ciphertext = oracles[i - 1][32:].decode('hex')
         plaintexts.append(strxor(strxor(ciphertext, padding), xorred_guess))
 
+    print plaintexts
     log.warning("plaintext: %(plaintext)s", dict(plaintext="".join(plaintexts)))
 
 
